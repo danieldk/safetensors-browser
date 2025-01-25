@@ -4,14 +4,17 @@ use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Layout, Margin, Rect},
     style::{
         palette::tailwind::{BLUE, SLATE},
         Color, Modifier, Style, Stylize,
     },
     symbols,
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListState, Padding, Paragraph, StatefulWidget, Widget, Wrap},
+    widgets::{
+        Block, Borders, List, ListState, Padding, Paragraph, Scrollbar, ScrollbarState,
+        StatefulWidget, Widget, Wrap,
+    },
     DefaultTerminal, Frame,
 };
 use safetensors::tensor::TensorInfo;
@@ -29,6 +32,7 @@ pub struct App {
     tensor_names: Vec<String>,
     tensors: HashMap<String, TensorInfo>,
     tensor_state: ListState,
+    tensor_scrollbar_state: ScrollbarState,
     running: bool,
 }
 
@@ -37,11 +41,13 @@ impl App {
     pub fn new(tensors: HashMap<String, TensorInfo>) -> Self {
         let mut tensor_names = tensors.keys().map(ToOwned::to_owned).collect::<Vec<_>>();
         tensor_names.sort_by(|k1, k2| cmp_numeric_lexicographic(k1, k2));
+        let scroll_len = tensor_names.len();
 
         Self {
             tensor_names,
             tensors,
             tensor_state: Default::default(),
+            tensor_scrollbar_state: ScrollbarState::new(scroll_len),
             running: false,
         }
     }
@@ -84,12 +90,26 @@ impl App {
             .border_style(TODO_HEADER_STYLE)
             .bg(NORMAL_ROW_BG);
 
+        let inner = block.inner(area);
+        let [scroll_area, list_area] =
+            Layout::horizontal([Constraint::Max(1), Constraint::Fill(1)]).areas(inner); //.areas(block.inner(area));
+
+        let scrollbar = Scrollbar::new(ratatui::widgets::ScrollbarOrientation::VerticalLeft);
+
         let tensors = List::new(self.tensor_names.iter().map(String::as_str))
-            .block(block)
             .highlight_style(SELECTED_STYLE)
             .highlight_symbol(">")
             .highlight_spacing(ratatui::widgets::HighlightSpacing::Always);
-        StatefulWidget::render(tensors, area, buf, &mut self.tensor_state);
+
+        Widget::render(block, area, buf);
+        StatefulWidget::render(
+            scrollbar,
+            scroll_area,
+            buf,
+            &mut self.tensor_scrollbar_state,
+        );
+
+        StatefulWidget::render(tensors, list_area, buf, &mut self.tensor_state);
     }
 
     fn render_selected_item(&mut self, area: Rect, buf: &mut Buffer) {
@@ -140,18 +160,22 @@ impl App {
 
     fn select_first(&mut self) {
         self.tensor_state.select_first();
+        self.tensor_scrollbar_state.first();
     }
 
     fn select_last(&mut self) {
         self.tensor_state.select_last();
+        self.tensor_scrollbar_state.last();
     }
 
     fn select_next(&mut self) {
         self.tensor_state.select_next();
+        self.tensor_scrollbar_state.next();
     }
 
     fn select_previous(&mut self) {
         self.tensor_state.select_previous();
+        self.tensor_scrollbar_state.prev();
     }
 }
 
