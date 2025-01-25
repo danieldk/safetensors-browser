@@ -13,6 +13,7 @@ futures = "0.3.31"
 hf-hub = "0.4.1"
 indicatif = "0.17.9"
 memmap2 = "0.9.5"
+num-bigint = "0.4.6"
 ratatui = "0.29.0"
 safetensors = "0.5.2"
 serde = { version = "1", features = ["derive"] }

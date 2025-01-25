@@ -16,6 +16,8 @@ use ratatui::{
 };
 use safetensors::tensor::TensorInfo;
 
+use crate::metadata::cmp_numeric_lexicographic;
+
 const TODO_HEADER_STYLE: Style = Style::new().fg(SLATE.c100).bg(BLUE.c800);
 const NORMAL_ROW_BG: Color = SLATE.c950;
 const ALT_ROW_BG_COLOR: Color = SLATE.c900;
@@ -33,8 +35,11 @@ pub struct App {
 impl App {
     /// Construct a new instance of [`App`].
     pub fn new(tensors: HashMap<String, TensorInfo>) -> Self {
+        let mut tensor_names = tensors.keys().map(ToOwned::to_owned).collect::<Vec<_>>();
+        tensor_names.sort_by(|k1, k2| cmp_numeric_lexicographic(k1, k2));
+
         Self {
-            tensor_names: tensors.keys().map(ToOwned::to_owned).collect(),
+            tensor_names,
             tensors,
             tensor_state: Default::default(),
             running: false,

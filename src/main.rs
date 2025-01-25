@@ -10,6 +10,8 @@ use tokio::runtime::Runtime;
 pub mod app;
 pub use app::App;
 
+pub mod metadata;
+
 mod repo;
 use repo::SafeTensorsRepo;
 
