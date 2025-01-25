@@ -10,7 +10,7 @@ use ratatui::{
         Color, Modifier, Style, Stylize,
     },
     symbols,
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, Borders, List, ListState, Padding, Paragraph, StatefulWidget, Widget, Wrap},
     DefaultTerminal, Frame,
 };
@@ -90,13 +90,26 @@ impl App {
     fn render_selected_item(&mut self, area: Rect, buf: &mut Buffer) {
         let info = if let Some(i) = self.tensor_state.selected() {
             let name = &self.tensor_names[i];
-            let info = &self.tensors[name];
-            format!(
-                "DType: {:?}\nShape: {:?}\nOffsets: {:?}",
-                info.dtype, info.shape, info.data_offsets
-            )
+            let tensor_info = &self.tensors[name];
+            let field_style = Style::new().magenta();
+            vec![
+                Line::from(vec![Span::styled("Name: ", field_style), Span::raw(name)]),
+                Line::from(vec![
+                    Span::styled("DType: ", field_style),
+                    Span::raw(format!("{:?}", tensor_info.dtype)),
+                ]),
+                Line::from(vec![
+                    Span::styled("Shape: ", field_style),
+                    Span::raw(format!("{:?}", tensor_info.shape)),
+                ]),
+                Line::from(vec![
+                    Span::styled("Offsets: ", field_style),
+                    Span::raw(format!("{:?}", tensor_info.data_offsets)),
+                ]),
+            ]
         } else {
-            "Nothing selected...".to_string()
+            vec![Line::raw("Nothing selected...")]
+            //"Nothing selected...".to_string()
         };
 
         // We show the list item's info under the list in this paragraph
@@ -147,7 +160,7 @@ impl Widget for &mut App {
         .areas(area);
 
         let [list_area, item_area] =
-            Layout::vertical([Constraint::Fill(1), Constraint::Fill(1)]).areas(main_area);
+            Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(main_area);
 
         self.render_list(list_area, buf);
         self.render_selected_item(item_area, buf);
