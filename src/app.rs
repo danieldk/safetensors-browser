@@ -148,6 +148,27 @@ impl App {
         ));
     }
 
+    fn render_footer(&mut self, area: Rect, buf: &mut Buffer) {
+        match self.state {
+            UiState::Browse => {
+                Paragraph::new("Use ↓↑ to move, g/G to go top/bottom, forward slash (/) to filter.")
+                    .centered()
+                    .render(area, buf)
+            }
+            UiState::Filter => Paragraph::new("Use Esc or Enter to confirm filter.")
+                .centered()
+                .render(area, buf),
+            UiState::Quit => unreachable!(),
+        }
+    }
+
+    fn render_header(&self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new("safetensors-browser")
+            .bold()
+            .centered()
+            .render(area, buf);
+    }
+
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
         let block = Block::new()
             .title(Line::raw("Tensors").centered())
@@ -261,8 +282,8 @@ impl App {
 
 impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let [_header_area, main_area, _footer_area] = Layout::vertical([
-            Constraint::Length(2),
+        let [header_area, main_area, footer_area] = Layout::vertical([
+            Constraint::Length(1),
             Constraint::Fill(1),
             Constraint::Length(1),
         ])
@@ -280,8 +301,10 @@ impl Widget for &mut App {
                 UiState::Quit => unreachable!(),
             };
 
+        self.render_header(header_area, buf);
         self.render_list(list_area, buf);
         self.render_filter(filter_area, buf);
         self.render_selected_item(detail_area, buf);
+        self.render_footer(footer_area, buf);
     }
 }
