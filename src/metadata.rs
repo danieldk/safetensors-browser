@@ -1,7 +1,42 @@
+use std::path::PathBuf;
 use std::str;
 use std::{cmp::Ordering, str::FromStr};
+use std::{collections::HashMap, fs::File, path::Path};
 
+use color_eyre::eyre::{Context, Result};
+use memmap2::Mmap;
 use num_bigint::BigInt;
+use safetensors::{tensor::TensorInfo, SafeTensors};
+
+pub struct TensorMetadata {
+    pub tensor_info: TensorInfo,
+    pub checkpoint: PathBuf,
+}
+
+pub fn get_tensors<P>(checkpoint_paths: &[P]) -> Result<HashMap<String, TensorMetadata>>
+where
+    P: AsRef<Path>,
+{
+    let mut tensors = HashMap::new();
+    for path in checkpoint_paths {
+        let path = path.as_ref();
+        let f = File::open(&path)
+            .with_context(|| format!("Cannot open checkpoint: {}", path.to_string_lossy()))?;
+        let mmap = unsafe { Mmap::map(&f)? };
+        let (_, metadata) = SafeTensors::read_metadata(&mmap)?;
+        tensors.extend(metadata.tensors().into_iter().map(|(name, tensor_info)| {
+            (
+                name,
+                TensorMetadata {
+                    checkpoint: path.to_owned(),
+                    tensor_info: tensor_info.clone(),
+                },
+            )
+        }));
+    }
+
+    Ok(tensors)
+}
 
 pub fn cmp_numeric_lexicographic(s1: &str, s2: &str) -> Ordering {
     let mut b1 = s1.as_bytes();

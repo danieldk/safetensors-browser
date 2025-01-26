@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap, ffi::OsStr};
 
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
@@ -21,9 +21,11 @@ use ratatui::{
     },
     DefaultTerminal,
 };
-use safetensors::tensor::TensorInfo;
 
-use crate::{metadata::cmp_numeric_lexicographic, InputState};
+use crate::{
+    metadata::{cmp_numeric_lexicographic, TensorMetadata},
+    InputState,
+};
 
 const TODO_HEADER_STYLE: Style = Style::new().fg(SLATE.c100).bg(BLUE.c800);
 const NORMAL_ROW_BG: Color = SLATE.c950;
@@ -43,7 +45,7 @@ pub struct App {
     cursor_position: Option<Position>,
     matcher: SkimMatcherV2,
     tensor_names: Vec<String>,
-    tensors: HashMap<String, TensorInfo>,
+    tensors: HashMap<String, TensorMetadata>,
     tensor_state: ListState,
     tensor_scrollbar_state: ScrollbarState,
     state: UiState,
@@ -52,7 +54,7 @@ pub struct App {
 
 impl App {
     /// Construct a new instance of [`App`].
-    pub fn new(tensors: HashMap<String, TensorInfo>) -> Self {
+    pub fn new(tensors: HashMap<String, TensorMetadata>) -> Self {
         let scroll_len = tensors.len();
 
         Self {
@@ -202,21 +204,32 @@ impl App {
     fn render_selected_item(&mut self, area: Rect, buf: &mut Buffer) {
         let info = if let Some(i) = self.tensor_state.selected() {
             let name = &self.tensor_names[i];
-            let tensor_info = &self.tensors[name];
+            let metadata = &self.tensors[name];
             let field_style = Style::new().magenta();
             vec![
                 Line::from(vec![Span::styled("Name: ", field_style), Span::raw(name)]),
                 Line::from(vec![
+                    Span::styled("File: ", field_style),
+                    Span::raw(
+                        metadata
+                            .checkpoint
+                            .file_name()
+                            .map(OsStr::to_string_lossy)
+                            // This shouldn't happen.
+                            .unwrap_or_else(|| Cow::Borrowed("unknown")),
+                    ),
+                ]),
+                Line::from(vec![
                     Span::styled("DType: ", field_style),
-                    Span::raw(format!("{:?}", tensor_info.dtype)),
+                    Span::raw(format!("{:?}", metadata.tensor_info.dtype)),
                 ]),
                 Line::from(vec![
                     Span::styled("Shape: ", field_style),
-                    Span::raw(format!("{:?}", tensor_info.shape)),
+                    Span::raw(format!("{:?}", metadata.tensor_info.shape)),
                 ]),
                 Line::from(vec![
                     Span::styled("Offsets: ", field_style),
-                    Span::raw(format!("{:?}", tensor_info.data_offsets)),
+                    Span::raw(format!("{:?}", metadata.tensor_info.data_offsets)),
                 ]),
             ]
         } else {

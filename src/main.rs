@@ -1,10 +1,6 @@
-use std::{collections::HashMap, fs::File, path::Path};
-
 use clap::Parser;
-use color_eyre::eyre::{Context, Result};
+use color_eyre::eyre::Result;
 use hf_hub::{api::tokio::Api, Repo, RepoType};
-use memmap2::Mmap;
-use safetensors::{tensor::TensorInfo, SafeTensors};
 use tokio::runtime::Runtime;
 
 pub mod app;
@@ -14,6 +10,7 @@ mod input;
 pub use input::InputState;
 
 pub mod metadata;
+use metadata::get_tensors;
 
 mod repo;
 use repo::SafeTensorsRepo;
@@ -25,28 +22,6 @@ struct Cli {
 
     #[arg(short, long)]
     revision: Option<String>,
-}
-
-fn get_tensors<P>(checkpoint_paths: &[P]) -> Result<HashMap<String, TensorInfo>>
-where
-    P: AsRef<Path>,
-{
-    let mut tensors = HashMap::new();
-    for path in checkpoint_paths {
-        let path = path.as_ref();
-        let f = File::open(&path)
-            .with_context(|| format!("Cannot open checkpoint: {}", path.to_string_lossy()))?;
-        let mmap = unsafe { Mmap::map(&f)? };
-        let (_, metadata) = SafeTensors::read_metadata(&mmap)?;
-        tensors.extend(
-            metadata
-                .tensors()
-                .into_iter()
-                .map(|(name, info)| (name, info.clone())),
-        );
-    }
-
-    Ok(tensors)
 }
 
 fn main() -> Result<()> {
