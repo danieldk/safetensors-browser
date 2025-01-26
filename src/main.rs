@@ -10,6 +10,9 @@ use tokio::runtime::Runtime;
 pub mod app;
 pub use app::App;
 
+mod input;
+pub use input::InputState;
+
 pub mod metadata;
 
 mod repo;
