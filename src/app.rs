@@ -204,6 +204,12 @@ impl App {
                 KeyCode::Backspace => self.filter_state.delete_char(),
                 KeyCode::Left => self.filter_state.move_cursor_left(),
                 KeyCode::Right => self.filter_state.move_cursor_right(),
+                KeyCode::Down => self.select_next(),
+                KeyCode::Up => self.select_previous(),
+                KeyCode::Home => self.select_first(),
+                KeyCode::End => self.select_last(),
+                KeyCode::PageDown => self.page_down(),
+                KeyCode::PageUp => self.page_up(),
                 _ => {}
             },
             UiState::Quit => {}
