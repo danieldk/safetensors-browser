@@ -10,6 +10,7 @@ clap = { version = "4.5.27", features = ["derive"] }
 color-eyre = "0.6.3"
 crossterm = "0.28.1"
 futures = "0.3.31"
+fuzzy-matcher = "0.3.7"
 hf-hub = "0.4.1"
 indicatif = "0.17.9"
 memmap2 = "0.9.5"

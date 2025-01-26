@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use color_eyre::{owo_colors::colors::xterm::Brown, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Margin, Position, Rect},
@@ -117,9 +118,9 @@ enum UiState {
     Quit,
 }
 
-#[derive(Debug, Default)]
 pub struct App {
     cursor_position: Option<Position>,
+    matcher: SkimMatcherV2,
     tensor_names: Vec<String>,
     tensors: HashMap<String, TensorInfo>,
     tensor_state: ListState,
@@ -138,6 +139,7 @@ impl App {
         Self {
             cursor_position: None,
             filter_state: Default::default(),
+            matcher: Default::default(),
             tensor_names,
             tensors,
             tensor_state: Default::default(),
@@ -149,6 +151,18 @@ impl App {
     /// Run the application's main loop.
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         while !matches!(self.state, UiState::Quit) {
+            // Update tensor list.
+            self.tensor_names = self
+                .tensors
+                .keys()
+                .filter(|name| {
+                    self.matcher
+                        .fuzzy_match(name, self.filter_state.text())
+                        .is_some()
+                })
+                .map(String::clone)
+                .collect();
+
             terminal.draw(|frame| {
                 frame.render_widget(&mut self, frame.area());
                 if let Some(cursor_position) = self.cursor_position {
