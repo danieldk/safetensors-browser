@@ -132,15 +132,13 @@ pub struct App {
 impl App {
     /// Construct a new instance of [`App`].
     pub fn new(tensors: HashMap<String, TensorInfo>) -> Self {
-        let mut tensor_names = tensors.keys().map(ToOwned::to_owned).collect::<Vec<_>>();
-        tensor_names.sort_by(|k1, k2| cmp_numeric_lexicographic(k1, k2));
-        let scroll_len = tensor_names.len();
+        let scroll_len = tensors.len();
 
         Self {
             cursor_position: None,
             filter_state: Default::default(),
             matcher: Default::default(),
-            tensor_names,
+            tensor_names: Default::default(),
             tensors,
             tensor_state: Default::default(),
             tensor_scrollbar_state: ScrollbarState::new(scroll_len),
@@ -162,6 +160,8 @@ impl App {
                 })
                 .map(String::clone)
                 .collect();
+            self.tensor_names
+                .sort_by(|k1, k2| cmp_numeric_lexicographic(k1, k2));
 
             terminal.draw(|frame| {
                 frame.render_widget(&mut self, frame.area());
