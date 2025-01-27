@@ -209,7 +209,7 @@ impl App {
             let name = &self.tensor_names[i];
             let metadata = &self.tensors[name];
             let field_style = Style::new().magenta();
-            vec![
+            let mut info = vec![
                 Line::from(vec![Span::styled("Name: ", field_style), Span::raw(name)]),
                 Line::from(vec![
                     Span::styled("File: ", field_style),
@@ -234,7 +234,48 @@ impl App {
                     Span::styled("Offsets: ", field_style),
                     Span::raw(format!("{:?}", metadata.tensor_info.data_offsets)),
                 ]),
-            ]
+            ];
+
+            if let Some(group) = &metadata.quantization_group {
+                info.extend([
+                    Line::default(),
+                    Line::from(vec![Span::styled(
+                        "Compressed tensors",
+                        Style::new().blue().underlined(),
+                    )]),
+                ]);
+                for (title, spec) in [
+                    ("Input activation", &group.input_activations),
+                    ("Weight", &group.weights),
+                    ("Output activation", &group.output_activations),
+                ] {
+                    if let Some(spec) = spec {
+                        info.extend([
+                            Line::default(),
+                            Line::from(vec![Span::styled(title, Style::new().blue())]),
+                            Line::default(),
+                            Line::from(vec![
+                                Span::styled("Dynamic: ", field_style),
+                                Span::raw(format!("{}", spec.dynamic)),
+                            ]),
+                            Line::from(vec![
+                                Span::styled("Symmetric: ", field_style),
+                                Span::raw(format!("{}", spec.symmetric)),
+                            ]),
+                            Line::from(vec![
+                                Span::styled("Strategy: ", field_style),
+                                Span::raw(&spec.strategy),
+                            ]),
+                            Line::from(vec![
+                                Span::styled("DType: ", field_style),
+                                Span::raw(&spec.dtype),
+                            ]),
+                        ]);
+                    }
+                }
+            }
+
+            info
         } else {
             vec![Line::raw("Nothing selected...")]
             //"Nothing selected...".to_string()

@@ -1,10 +1,14 @@
 use clap::Parser;
 use color_eyre::eyre::Result;
 use hf_hub::{api::tokio::Api, Repo, RepoType};
+use models::get_param_layer;
 use tokio::runtime::Runtime;
+use tokio::try_join;
 
 pub mod app;
 pub use app::App;
+
+pub mod config;
 
 mod input;
 pub use input::InputState;
@@ -14,6 +18,8 @@ use metadata::get_tensors;
 
 mod repo;
 use repo::SafeTensorsRepo;
+
+pub mod models;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -34,10 +40,21 @@ fn main() -> Result<()> {
     let repo = Repo::with_revision(cli.repo, RepoType::Model, revision);
     let safetensors_repo = SafeTensorsRepo::new(&api, repo);
     let rt = Runtime::new()?;
-    let checkpoint_paths = rt.block_on(safetensors_repo.get_checkpoint_paths())?;
+    let (checkpoint_paths, config) = rt.block_on(async {
+        try_join!(
+            safetensors_repo.get_checkpoint_paths(),
+            safetensors_repo.get_config()
+        )
+    })?;
 
     let terminal = ratatui::init();
-    let result = App::new(get_tensors(&checkpoint_paths)?).run(terminal);
+    let param_to_layer = get_param_layer(&config.model_type);
+    let result = App::new(get_tensors(
+        &checkpoint_paths,
+        config.layer_quantizers(),
+        param_to_layer.as_deref(),
+    )?)
+    .run(terminal);
     ratatui::restore();
 
     result

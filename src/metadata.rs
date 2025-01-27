@@ -8,12 +8,21 @@ use memmap2::Mmap;
 use num_bigint::BigInt;
 use safetensors::{tensor::TensorInfo, SafeTensors};
 
+use crate::config::QuantizationGroup;
+use crate::models::ParamToLayer;
+
+#[derive(Debug)]
 pub struct TensorMetadata {
     pub tensor_info: TensorInfo,
     pub checkpoint: PathBuf,
+    pub quantization_group: Option<QuantizationGroup>,
 }
 
-pub fn get_tensors<P>(checkpoint_paths: &[P]) -> Result<HashMap<String, TensorMetadata>>
+pub fn get_tensors<P>(
+    checkpoint_paths: &[P],
+    layer_quantizers: HashMap<String, QuantizationGroup>,
+    param_layer: Option<&dyn ParamToLayer>,
+) -> Result<HashMap<String, TensorMetadata>>
 where
     P: AsRef<Path>,
 {
@@ -25,10 +34,15 @@ where
         let mmap = unsafe { Mmap::map(&f)? };
         let (_, metadata) = SafeTensors::read_metadata(&mmap)?;
         tensors.extend(metadata.tensors().into_iter().map(|(name, tensor_info)| {
+            let quantization_group = param_layer
+                .and_then(|param_layer| param_layer.param_to_layer(&name))
+                .and_then(|layer| layer_quantizers.get(layer))
+                .cloned();
             (
                 name,
                 TensorMetadata {
                     checkpoint: path.to_owned(),
+                    quantization_group,
                     tensor_info: tensor_info.clone(),
                 },
             )

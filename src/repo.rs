@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap},
     fs::File,
     io::BufReader,
     path::PathBuf,
@@ -12,7 +12,10 @@ use hf_hub::{
     Cache, Repo,
 };
 use indicatif::{MultiProgress, ProgressBar};
+use reqwest::StatusCode;
 use serde::Deserialize;
+
+use crate::config::Config;
 
 #[derive(Debug, Deserialize)]
 struct Index {
@@ -42,6 +45,15 @@ impl SafeTensorsRepo {
         }
 
         Ok(try_join_all(tasks).await?)
+    }
+
+    pub async fn get_config(&self) -> Result<Config> {
+        let config_file = self.api_repo.get("config.json").await?;
+        let reader = BufReader::new(File::open(&config_file).context(format!(
+            "Cannot open model configuration for reading: {}",
+            config_file.to_string_lossy()
+        ))?);
+        Ok(serde_json::from_reader(reader)?)
     }
 
     async fn get_with_progress<P>(
