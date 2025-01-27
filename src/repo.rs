@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     fs::File,
     io::BufReader,
     path::PathBuf,
@@ -31,11 +31,9 @@ impl SafeTensorsRepo {
     }
 
     pub async fn get_checkpoint_paths(&self) -> Result<Vec<PathBuf>> {
-        let index = self.get_safetensors_index().await?;
+        let checkpoints = self.get_safetensors_index().await?;
 
         let multi_pg = MultiProgress::new();
-
-        let checkpoints: HashSet<&String> = HashSet::from_iter(index.weight_map.values());
 
         let mut tasks = Vec::new();
         for checkpoint in checkpoints {
@@ -46,10 +44,15 @@ impl SafeTensorsRepo {
         Ok(try_join_all(tasks).await?)
     }
 
-    async fn get_with_progress<P>(&self, filename: &str, progress: P) -> Result<PathBuf, ApiError>
+    async fn get_with_progress<P>(
+        &self,
+        filename: impl AsRef<str>,
+        progress: P,
+    ) -> Result<PathBuf, ApiError>
     where
         P: Progress + Clone + Send + Sync + 'static,
     {
+        let filename = filename.as_ref();
         let cache = Cache::from_env();
         if let Some(path) = cache.repo(self.repo.clone()).get(filename) {
             Ok(path)
@@ -60,12 +63,24 @@ impl SafeTensorsRepo {
         }
     }
 
-    async fn get_safetensors_index(&self) -> Result<Index> {
-        let index_file = self.api_repo.get("model.safetensors.index.json").await?;
+    async fn get_safetensors_index(&self) -> Result<Vec<String>> {
+        let index_file = match self.api_repo.get("model.safetensors.index.json").await {
+            Ok(index_file) => Ok(index_file),
+            Err(ApiError::RequestError(request_err)) => {
+                if let Some(StatusCode::NOT_FOUND) = request_err.status() {
+                    return Ok(vec!["model.safetensors".to_string()]);
+                }
+                Err(ApiError::RequestError(request_err))
+            }
+            err => err,
+        }?;
         let reader = BufReader::new(File::open(&index_file).context(format!(
             "Cannot open safetensors index for reading: {}",
             index_file.to_string_lossy()
         ))?);
-        Ok(serde_json::from_reader(reader)?)
+
+        let index: Index = serde_json::from_reader(reader)?;
+        let checkpoint_set = index.weight_map.into_values().collect::<BTreeSet<_>>();
+        Ok(checkpoint_set.into_iter().collect())
     }
 }
