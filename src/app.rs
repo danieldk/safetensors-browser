@@ -85,6 +85,9 @@ impl App {
                 .collect();
             self.tensor_names
                 .sort_by(|k1, k2| cmp_numeric_lexicographic(k1, k2));
+            self.tensor_scrollbar_state = self
+                .tensor_scrollbar_state
+                .content_length(self.tensor_names.len());
 
             terminal.draw(|frame| {
                 frame.render_widget(&mut self, frame.area());
