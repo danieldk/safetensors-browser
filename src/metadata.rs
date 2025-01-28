@@ -20,7 +20,7 @@ where
     let mut tensors = HashMap::new();
     for path in checkpoint_paths {
         let path = path.as_ref();
-        let f = File::open(&path)
+        let f = File::open(path)
             .with_context(|| format!("Cannot open checkpoint: {}", path.to_string_lossy()))?;
         let mmap = unsafe { Mmap::map(&f)? };
         let (_, metadata) = SafeTensors::read_metadata(&mmap)?;
