@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap},
     fs::File,
     io::BufReader,
     path::PathBuf,
@@ -12,6 +12,7 @@ use hf_hub::{
     Cache, Repo,
 };
 use indicatif::{MultiProgress, ProgressBar};
+use reqwest::StatusCode;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

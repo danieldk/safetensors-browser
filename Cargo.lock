@@ -1559,6 +1559,7 @@ dependencies = [
  "memmap2",
  "num-bigint",
  "ratatui",
+ "reqwest",
  "safetensors",
  "serde",
  "serde_json",

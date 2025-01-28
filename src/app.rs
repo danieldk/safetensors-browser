@@ -72,22 +72,7 @@ impl App {
     /// Run the application's main loop.
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         while !matches!(self.state, UiState::Quit) {
-            // Update tensor list.
-            self.tensor_names = self
-                .tensors
-                .keys()
-                .filter(|name| {
-                    self.matcher
-                        .fuzzy_match(name, self.filter_state.text())
-                        .is_some()
-                })
-                .map(String::clone)
-                .collect();
-            self.tensor_names
-                .sort_by(|k1, k2| cmp_numeric_lexicographic(k1, k2));
-            self.tensor_scrollbar_state = self
-                .tensor_scrollbar_state
-                .content_length(self.tensor_names.len());
+            self.update_tensor_names();
 
             terminal.draw(|frame| {
                 frame.render_widget(&mut self, frame.area());
@@ -100,6 +85,31 @@ impl App {
             };
         }
         Ok(())
+    }
+
+    fn update_tensor_names(&mut self) {
+        let prev_len = self.tensor_names.len();
+
+        self.tensor_names = self
+            .tensors
+            .keys()
+            .filter(|name| {
+                self.matcher
+                    .fuzzy_match(name, self.filter_state.text())
+                    .is_some()
+            })
+            .map(String::clone)
+            .collect();
+        self.tensor_names
+            .sort_by(|k1, k2| cmp_numeric_lexicographic(k1, k2));
+        self.tensor_scrollbar_state = self
+            .tensor_scrollbar_state
+            .content_length(self.tensor_names.len());
+
+        if self.tensor_names.len() != prev_len {
+            self.tensor_state.select_first();
+            self.tensor_scrollbar_state.first();
+        }
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
