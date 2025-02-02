@@ -88,9 +88,7 @@ impl App {
     }
 
     fn update_tensor_names(&mut self) {
-        let prev_len = self.tensor_names.len();
-
-        self.tensor_names = self
+        let new_tensor_names: Vec<String> = self
             .tensors
             .keys()
             .filter(|name| {
@@ -100,16 +98,21 @@ impl App {
             })
             .map(String::clone)
             .collect();
+
+        if new_tensor_names.len() == self.tensor_names.len() {
+            return;
+        }
+
+        self.tensor_names = new_tensor_names;
+
         self.tensor_names
             .sort_by(|k1, k2| cmp_numeric_lexicographic(k1, k2));
         self.tensor_scrollbar_state = self
             .tensor_scrollbar_state
             .content_length(self.tensor_names.len());
 
-        if self.tensor_names.len() != prev_len {
-            self.tensor_state.select_first();
-            self.tensor_scrollbar_state.first();
-        }
+        self.tensor_state.select_first();
+        self.tensor_scrollbar_state.first();
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
