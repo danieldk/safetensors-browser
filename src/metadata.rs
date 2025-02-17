@@ -1,38 +1,38 @@
-use std::path::PathBuf;
+use std::collections::HashMap;
 use std::str;
 use std::{cmp::Ordering, str::FromStr};
-use std::{collections::HashMap, fs::File, path::Path};
 
-use color_eyre::eyre::{Context, Result};
-use memmap2::Mmap;
+use color_eyre::eyre::Result;
 use num_bigint::BigInt;
-use safetensors::{tensor::TensorInfo, SafeTensors};
+use safetensors::tensor::TensorInfo;
+
+use crate::repo::CheckpointMetadata;
 
 pub struct TensorMetadata {
     pub tensor_info: TensorInfo,
-    pub checkpoint: PathBuf,
+    pub checkpoint: String,
 }
 
-pub fn get_tensors<P>(checkpoint_paths: &[P]) -> Result<HashMap<String, TensorMetadata>>
-where
-    P: AsRef<Path>,
-{
+pub fn get_tensors(
+    checkpoint_metadatas: &[CheckpointMetadata],
+) -> Result<HashMap<String, TensorMetadata>> {
     let mut tensors = HashMap::new();
-    for path in checkpoint_paths {
-        let path = path.as_ref();
-        let f = File::open(path)
-            .with_context(|| format!("Cannot open checkpoint: {}", path.to_string_lossy()))?;
-        let mmap = unsafe { Mmap::map(&f)? };
-        let (_, metadata) = SafeTensors::read_metadata(&mmap)?;
-        tensors.extend(metadata.tensors().into_iter().map(|(name, tensor_info)| {
-            (
-                name,
-                TensorMetadata {
-                    checkpoint: path.to_owned(),
-                    tensor_info: tensor_info.clone(),
-                },
-            )
-        }));
+    for metadata in checkpoint_metadatas {
+        tensors.extend(
+            metadata
+                .metadata
+                .tensors()
+                .into_iter()
+                .map(|(name, tensor_info)| {
+                    (
+                        name,
+                        TensorMetadata {
+                            checkpoint: metadata.filename.clone(),
+                            tensor_info: tensor_info.clone(),
+                        },
+                    )
+                }),
+        );
     }
 
     Ok(tensors)
