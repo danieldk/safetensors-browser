@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, ffi::OsStr};
+use std::collections::HashMap;
 
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
@@ -226,14 +226,7 @@ impl App {
                 Line::from(vec![Span::styled("Name: ", field_style), Span::raw(name)]),
                 Line::from(vec![
                     Span::styled("File: ", field_style),
-                    Span::raw(
-                        metadata
-                            .checkpoint
-                            .file_name()
-                            .map(OsStr::to_string_lossy)
-                            // This shouldn't happen.
-                            .unwrap_or_else(|| Cow::Borrowed("unknown")),
-                    ),
+                    Span::raw(metadata.checkpoint.clone()),
                 ]),
                 Line::from(vec![
                     Span::styled("DType: ", field_style),
