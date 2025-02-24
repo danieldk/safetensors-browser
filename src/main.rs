@@ -1,10 +1,12 @@
 use clap::Parser;
 use color_eyre::eyre::Result;
 use hf_hub::{api::tokio::Api, Cache, Repo, RepoType};
-use tokio::runtime::Runtime;
+use tokio::{runtime::Runtime, try_join};
 
 pub mod app;
 pub use app::App;
+
+pub(crate) mod config;
 
 mod input;
 pub use input::InputState;
@@ -38,10 +40,15 @@ fn main() -> Result<()> {
     let cache_repo = Cache::new(xdg_dir.get_cache_home()).repo(repo.clone());
     let safetensors_repo = SafeTensorsRepo::new(&api, repo, cache_repo);
     let rt = Runtime::new()?;
-    let checkpoint_metadata = rt.block_on(safetensors_repo.get_checkpoint_metadatas())?;
+    let (checkpoint_metadata, config) = rt.block_on(async {
+        try_join!(
+            safetensors_repo.get_checkpoint_metadatas(),
+            safetensors_repo.get_config()
+        )
+    })?;
 
     let terminal = ratatui::init();
-    let result = App::new(get_tensors(&checkpoint_metadata)?).run(terminal);
+    let result = App::new(get_tensors(&config, &checkpoint_metadata)?).run(terminal);
     ratatui::restore();
 
     result

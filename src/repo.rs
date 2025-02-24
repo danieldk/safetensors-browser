@@ -13,6 +13,7 @@ use safetensors::tensor::Metadata;
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 
+use crate::config::Config;
 use crate::utils::symlink_or_rename;
 
 const MAX_CONCURRENT: usize = 8;
@@ -155,6 +156,15 @@ impl SafeTensorsRepo {
         progress.finish();
 
         Ok(results)
+    }
+
+    pub async fn get_config(&self) -> Result<Config> {
+        let config_file = self.api_repo.get("config.json").await?;
+        let reader = BufReader::new(File::open(&config_file).context(format!(
+            "Cannot open model configuration for reading: {}",
+            config_file.to_string_lossy()
+        ))?);
+        Ok(serde_json::from_reader(reader)?)
     }
 
     async fn get_safetensors_index(&self) -> Result<Vec<String>> {

@@ -14,7 +14,7 @@ use ratatui::{
         Color, Modifier, Style, Stylize,
     },
     symbols,
-    text::{Line, Span},
+    text::Line,
     widgets::{
         Block, Borders, List, ListState, Padding, Paragraph, Scrollbar, ScrollbarState,
         StatefulWidget, Widget, Wrap,
@@ -23,7 +23,7 @@ use ratatui::{
 };
 
 use crate::{
-    metadata::{cmp_numeric_lexicographic, TensorMetadata},
+    metadata::{cmp_numeric_lexicographic, RenderMetadata, TensorMetadata},
     InputState,
 };
 
@@ -221,26 +221,9 @@ impl App {
         let info = if let Some(i) = self.tensor_state.selected() {
             let name = &self.tensor_names[i];
             let metadata = &self.tensors[name];
-            let field_style = Style::new().magenta();
-            vec![
-                Line::from(vec![Span::styled("Name: ", field_style), Span::raw(name)]),
-                Line::from(vec![
-                    Span::styled("File: ", field_style),
-                    Span::raw(metadata.checkpoint.clone()),
-                ]),
-                Line::from(vec![
-                    Span::styled("DType: ", field_style),
-                    Span::raw(format!("{:?}", metadata.tensor_info.dtype)),
-                ]),
-                Line::from(vec![
-                    Span::styled("Shape: ", field_style),
-                    Span::raw(format!("{:?}", metadata.tensor_info.shape)),
-                ]),
-                Line::from(vec![
-                    Span::styled("Offsets: ", field_style),
-                    Span::raw(format!("{:?}", metadata.tensor_info.data_offsets)),
-                ]),
-            ]
+            let mut info = Vec::new();
+            metadata.render_metadata(metadata, &mut info);
+            info
         } else {
             vec![Line::raw("Nothing selected...")]
             //"Nothing selected...".to_string()
