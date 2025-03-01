@@ -5,6 +5,7 @@ authors = ["Daniël de Kok <me@danieldk.eu>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
 description = "Browser for Safetensors checkpoints"
+rust-version = "1.81"
 
 [dependencies]
 base32 = "0.5"

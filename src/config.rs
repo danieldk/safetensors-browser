@@ -9,7 +9,7 @@ pub struct Config {
 
     // For quantization, we'd rather not show any information than
     // fail when we don't know the quantization method.
-    #[serde(deserialize_with = "ok_or_none")]
+    #[serde(default, deserialize_with = "ok_or_none")]
     pub quantization_config: Option<QuantizationConfig>,
 }
 
