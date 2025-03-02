@@ -29,43 +29,8 @@ pub struct Quantization {
     zero_point: bool,
 }
 
-#[derive(Clone, Debug)]
-enum LinearLayout {
-    InFeaturesOutFeatures,
-    OutFeaturesInFeatures,
-}
-
-#[derive(Clone, Debug)]
-struct DequantizedShape {
-    shape: Vec<usize>,
-    layout: LinearLayout,
-}
-
-impl RenderMetadata for DequantizedShape {
-    fn render_metadata(&self, _tensor_metadata: &TensorMetadata, lines: &mut Vec<Line>) {
-        let field_style = Style::new().magenta();
-        lines.push(Line::from(vec![
-            Span::styled("Dequantized shape: ", field_style),
-            Span::raw(format!("{:?}", self.shape)),
-        ]));
-
-        match self.layout {
-            LinearLayout::InFeaturesOutFeatures => {
-                lines.push(Line::from(vec![
-                    Span::styled("Linear shape: ", field_style),
-                    Span::raw(format!(
-                        "{:?}",
-                        self.shape.iter().rev().cloned().collect::<Vec<_>>()
-                    )),
-                ]));
-            }
-            LinearLayout::OutFeaturesInFeatures => (),
-        };
-    }
-}
-
 impl Quantization {
-    fn dequantized_weight_shape(&self, quantized_shape: &[usize]) -> Option<DequantizedShape> {
+    fn dequantized_weight_shape(&self, quantized_shape: &[usize]) -> Option<Vec<usize>> {
         match self.qtype {
             QuantizationType::Awq {
                 version: AwqVersion::Gemm,
@@ -74,26 +39,20 @@ impl Quantization {
                 let mut dequantized_shape = quantized_shape.to_owned();
                 let last = dequantized_shape.last_mut()?;
                 *last *= n_packed;
-                Some(DequantizedShape {
-                    shape: dequantized_shape,
-                    layout: LinearLayout::InFeaturesOutFeatures,
-                })
+                Some(dequantized_shape)
             }
             QuantizationType::Gptq { .. } => {
                 let n_packed = 32 / self.dtype.n_bits();
                 let mut dequantized_shape = quantized_shape.to_owned();
                 let first = dequantized_shape.first_mut()?;
                 *first *= n_packed;
-                Some(DequantizedShape {
-                    shape: dequantized_shape,
-                    layout: LinearLayout::InFeaturesOutFeatures,
-                })
+                Some(dequantized_shape)
             }
             _ => None,
         }
     }
 
-    fn dequantized_zero_point_shape(&self, quantized_shape: &[usize]) -> Option<DequantizedShape> {
+    fn dequantized_zero_point_shape(&self, quantized_shape: &[usize]) -> Option<Vec<usize>> {
         match self.qtype {
             QuantizationType::Awq {
                 version: AwqVersion::Gemm,
@@ -103,10 +62,7 @@ impl Quantization {
                 let mut dequantized_shape = quantized_shape.to_owned();
                 let last = dequantized_shape.last_mut()?;
                 *last *= n_packed;
-                Some(DequantizedShape {
-                    shape: dequantized_shape,
-                    layout: LinearLayout::OutFeaturesInFeatures,
-                })
+                Some(dequantized_shape)
             }
             _ => None,
         }
@@ -294,7 +250,10 @@ impl RenderMetadata for Quantization {
         };
 
         if let Some(dequantized_shape) = dequantized_shape {
-            dequantized_shape.render_metadata(tensor_metadata, lines);
+            lines.push(Line::from(vec![
+                Span::styled("Dequantized shape: ", field_style),
+                Span::raw(format!("{:?}", dequantized_shape)),
+            ]))
         }
     }
 }
