@@ -47,6 +47,7 @@ pub struct App {
     matcher: SkimMatcherV2,
     tensor_names: Vec<String>,
     tensors: HashMap<String, TensorMetadata>,
+    tensor_list: List<'static>,
     tensor_state: ListState,
     tensor_scrollbar_state: ScrollbarState,
     state: UiState,
@@ -62,6 +63,7 @@ impl App {
             cursor_position: None,
             filter_state: Default::default(),
             matcher: Default::default(),
+            tensor_list: Default::default(),
             tensor_names: Default::default(),
             tensors,
             tensor_state: Default::default(),
@@ -117,6 +119,11 @@ impl App {
         self.tensor_scrollbar_state = self
             .tensor_scrollbar_state
             .content_length(self.tensor_names.len());
+
+        self.tensor_list = List::new(self.tensor_names.iter().map(ToOwned::to_owned))
+            .highlight_style(SELECTED_STYLE)
+            .highlight_symbol(">")
+            .highlight_spacing(ratatui::widgets::HighlightSpacing::Always);
 
         self.tensor_state.select_first();
         self.tensor_scrollbar_state.first();
@@ -210,11 +217,6 @@ impl App {
 
         let scrollbar = Scrollbar::new(ratatui::widgets::ScrollbarOrientation::VerticalLeft);
 
-        let tensors = List::new(self.tensor_names.iter().map(String::as_str))
-            .highlight_style(SELECTED_STYLE)
-            .highlight_symbol(">")
-            .highlight_spacing(ratatui::widgets::HighlightSpacing::Always);
-
         Widget::render(block, area, buf);
         StatefulWidget::render(
             scrollbar,
@@ -223,7 +225,7 @@ impl App {
             &mut self.tensor_scrollbar_state,
         );
 
-        StatefulWidget::render(tensors, list_area, buf, &mut self.tensor_state);
+        StatefulWidget::render(&self.tensor_list, list_area, buf, &mut self.tensor_state);
     }
 
     fn render_selected_item(&mut self, area: Rect, buf: &mut Buffer) {
