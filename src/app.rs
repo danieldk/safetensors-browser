@@ -38,6 +38,7 @@ enum UiState {
     #[default]
     Browse,
     Filter,
+    Init,
     Quit,
 }
 
@@ -65,14 +66,20 @@ impl App {
             tensors,
             tensor_state: Default::default(),
             tensor_scrollbar_state: ScrollbarState::new(scroll_len),
-            state: UiState::Browse,
+            state: UiState::Init,
         }
     }
 
     /// Run the application's main loop.
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         while !matches!(self.state, UiState::Quit) {
-            self.update_tensor_names();
+            if matches!(self.state, UiState::Init | UiState::Filter) {
+                self.update_tensor_names();
+            }
+
+            if matches!(self.state, UiState::Init) {
+                self.state = UiState::Browse;
+            }
 
             terminal.draw(|frame| {
                 frame.render_widget(&mut self, frame.area());
@@ -148,6 +155,7 @@ impl App {
                 KeyCode::PageUp => self.page_up(),
                 _ => {}
             },
+            UiState::Init => unreachable!(),
             UiState::Quit => {}
         }
     }
@@ -176,6 +184,7 @@ impl App {
             UiState::Filter => Paragraph::new("Use Esc or Enter to confirm filter.")
                 .centered()
                 .render(area, buf),
+            UiState::Init => unreachable!(),
             UiState::Quit => unreachable!(),
         }
     }
@@ -303,6 +312,7 @@ impl Widget for &mut App {
                     .areas(select_area),
                 UiState::Filter => Layout::vertical([Constraint::Fill(1), Constraint::Length(3)])
                     .areas(select_area),
+                UiState::Init => unreachable!(),
                 UiState::Quit => unreachable!(),
             };
 
