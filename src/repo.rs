@@ -47,7 +47,7 @@ impl SafeTensorsRepo {
     async fn download_file(&self, filename: &str) -> Result<CheckpointMetadata> {
         let url = self.api_repo.url(filename);
         let url_metadata = self.api.metadata(&url).await?;
-        let blob_path = self.cache_repo.blob_path(&url_metadata.etag);
+        let blob_path = self.cache_repo.blob_path(url_metadata.etag());
 
         let client = self.api.client();
         let header_size_response = client.get(&url).header("RANGE", "bytes=0-7").send().await?;
@@ -74,11 +74,11 @@ impl SafeTensorsRepo {
         std::fs::create_dir_all(blob_path.parent().unwrap())?;
         std::fs::copy(tempfile.path(), &blob_path)?;
 
-        let mut pointer_path = self.cache_repo.pointer_path(&url_metadata.commit_hash);
+        let mut pointer_path = self.cache_repo.pointer_path(url_metadata.commit_hash());
         std::fs::create_dir_all(&pointer_path)?;
         pointer_path.push(filename);
         symlink_or_rename(&blob_path, &pointer_path)?;
-        self.cache_repo.create_ref(&url_metadata.commit_hash)?;
+        self.cache_repo.create_ref(url_metadata.commit_hash())?;
 
         Ok(CheckpointMetadata {
             filename: filename.to_owned(),
